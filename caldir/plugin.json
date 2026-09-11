@@ -1,0 +1,8 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "caldir",
+  "version": "1.0.0",
+  "description": "Read, create, edit, and sync calendar events as plaintext .ics files",
+  "homepage": "https://caldir.org",
+  "keywords": ["calendar", "ics", "caldav"]
+}

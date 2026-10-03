@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "cloudflare",
+  "version": "1.0.0",
+  "description": "Manage Cloudflare resources and Workers projects with the Cloudflare CLI.",
+  "author": {
+    "name": "Tiles Privacy",
+    "url": "https://tiles.run"
+  },
+  "homepage": "https://developers.cloudflare.com/cf/",
+  "repository": "https://github.com/tilesprivacy/plugins",
+  "license": "MIT",
+  "keywords": ["cloudflare", "workers", "dns", "storage", "cli"]
+}

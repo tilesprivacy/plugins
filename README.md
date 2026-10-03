@@ -13,7 +13,7 @@ Search, read, and organize an Obsidian vault from Tiles using the official Obsid
 Install the plugin:
 
 ```sh
-tiles plugin install https://download.tiles.run/plugins/obsidian.zip
+tiles plugin install https://github.com/tilesprivacy/plugins/raw/refs/heads/main/obsidian.zip
 ```
 
 Restart Tiles after installation, then ask, for example:

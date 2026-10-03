@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "obsidian",
+  "version": "1.0.0",
+  "description": "Search, read, and organize your Obsidian vault with the Obsidian CLI.",
+  "author": {
+    "name": "Tiles Privacy",
+    "url": "https://tiles.run"
+  },
+  "homepage": "https://obsidian.md/cli",
+  "repository": "https://github.com/tilesprivacy/plugins",
+  "license": "MIT",
+  "keywords": ["obsidian", "notes", "knowledge-management", "cli"]
+}

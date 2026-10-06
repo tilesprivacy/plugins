@@ -1,6 +1,35 @@
 # plugins
 Plugins for Tiles.
 
+## Solstone
+
+Search and read your Solstone journal from Tiles, on the computer where your journal lives.
+
+- [Plugin source](./solstone/)
+- [Agent skill](./solstone/skills/solstone-memory/SKILL.md)
+- [Download ZIP](https://download.tiles.run/plugins/solstone.zip)
+- [Upstream project and setup guide](https://github.com/solpbc/solstone-tiles)
+
+Install version 0.1.1:
+
+```sh
+tiles plugin install https://download.tiles.run/plugins/solstone.zip
+```
+
+Requires Solstone journal 2.0.24 or later and a Tiles build with plugin support, such as the canary channel, running on the same computer. The plugin connects to the local journal at `http://127.0.0.1:7659/mcp`.
+
+To connect:
+
+1. In your journal, open **agents > connect an agent** and create a pairing code. Choose **on this computer** if asked. If this option is missing, enable agents on this computer first. The code is single-use and expires after 10 minutes.
+2. In Tiles chat, enter `/mcp-auth solstone__journal`.
+3. On the journal page that opens, choose the journal or facets and at least one kind of material to share, then enter the code and connect. You can change access or disconnect Tiles in the journal's agents app.
+
+If Tiles stays on "Processing..." after connecting, quit and reopen it. The connection is kept.
+
+The `solstone.zip` archive is an unchanged copy of the upstream `solstone-tiles-0.1.1.zip` package, renamed for the catalog. Its SHA-256 is `d82e91e52d332187aeb005ca8b4006a225e6cc3c367f6eb3b2a9b55cb6e48ac1`. It contains `plugin.json`, `mcp.json`, `LICENSE`, and `skills/solstone-memory/SKILL.md` at the archive root.
+
+Maintained by [sol pbc](https://solpbc.org). Licensed under [AGPL-3.0-only](./solstone/LICENSE).
+
 ## Cloudflare
 
 Manage Cloudflare resources and Workers projects from Tiles using the official Cloudflare CLI.

@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "cloudflare",
-  "version": "1.0.0",
-  "description": "Manage Cloudflare resources and Workers projects with the Cloudflare CLI.",
+  "version": "1.1.0",
+  "description": "Manage Cloudflare resources, Workers projects, and protected tunnels for Tiles inference.",
   "author": {
     "name": "Tiles Privacy",
     "url": "https://tiles.run"
@@ -10,5 +10,5 @@
   "homepage": "https://developers.cloudflare.com/cf/",
   "repository": "https://github.com/tilesprivacy/plugins",
   "license": "MIT",
-  "keywords": ["cloudflare", "workers", "dns", "storage", "cli"]
+  "keywords": ["cloudflare", "workers", "dns", "storage", "cli", "tunnel", "tiles", "inference"]
 }

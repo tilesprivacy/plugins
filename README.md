@@ -3,17 +3,18 @@ Plugins for Tiles.
 
 ## Cloudflare
 
-Manage Cloudflare resources and Workers projects from Tiles using the official Cloudflare CLI.
+Manage Cloudflare resources and Workers projects, and share Tiles inference through a protected named Cloudflare Tunnel.
 
 - [Plugin source](./cloudflare/)
 - [Agent skill](./cloudflare/skills/cloudflare/SKILL.md)
-- [Download ZIP](https://github.com/tilesprivacy/plugins/raw/refs/heads/main/cloudflare.zip)
+- [Tiles remote inference skill](./cloudflare/skills/tiles-remote-inference/SKILL.md)
+- [Download ZIP](https://download.tiles.run/plugins/cloudflare.zip)
 - [Cloudflare CLI setup](https://developers.cloudflare.com/cf/)
 
 Install the plugin:
 
 ```sh
-tiles plugin install https://github.com/tilesprivacy/plugins/raw/refs/heads/main/cloudflare.zip
+tiles plugin install https://download.tiles.run/plugins/cloudflare.zip
 ```
 
 Restart Tiles after installation, then ask, for example:
@@ -24,7 +25,15 @@ Restart Tiles after installation, then ask, for example:
 
 The Cloudflare CLI is currently in beta. It requires Node.js 22.18 or newer. Install the official CLI with `npm install --global cf`, then run `cf auth login` and authenticate with access to the account you want to manage. Existing Wrangler authentication is separate. This package supplies agent instructions, not the CLI or an MCP server.
 
-The ZIP follows [Agent Plugins 1.0.0](https://agent-plugins.org/): `plugin.json`, `LICENSE`, and `skills/cloudflare/` are at the archive root. To rebuild it from this repository:
+For remote inference, ask:
+
+```text
+@cloudflare Share my Tiles inference server through a protected Cloudflare Tunnel so I can use it from another device.
+```
+
+This workflow also requires `cloudflared`, a Cloudflare-managed hostname, and Cloudflare Access. It publishes only the verified Responses API endpoint and tests streaming with an authenticated client. Quick Tunnels do not support SSE. The receiving client must support the Responses API and custom Access headers; native Tiles-to-Tiles sharing uses `tiles remote share` and an Iroh ticket instead. Installing this plugin does not start a tunnel.
+
+The ZIP follows [Agent Plugins 1.0.0](https://agent-plugins.org/): `plugin.json`, `LICENSE`, and both skill folders under `skills/` are at the archive root. To rebuild it from this repository:
 
 ```sh
 cd cloudflare

@@ -3,7 +3,7 @@ Plugins for Tiles.
 
 ## Cloudflare
 
-Manage Cloudflare resources and Workers projects, and share Tiles inference through a protected named Cloudflare Tunnel.
+Manage Cloudflare resources and Workers projects, and share Tiles inference through account-free Cloudflare Quick Tunnels.
 
 - [Plugin source](./cloudflare/)
 - [Agent skill](./cloudflare/skills/cloudflare/SKILL.md)
@@ -23,15 +23,15 @@ Restart Tiles after installation, then ask, for example:
 @cloudflare List the DNS records for my domain and explain what each record does.
 ```
 
-The Cloudflare CLI is currently in beta. It requires Node.js 22.18 or newer. Install the official CLI with `npm install --global cf`, then run `cf auth login` and authenticate with access to the account you want to manage. Existing Wrangler authentication is separate. This package supplies agent instructions, not the CLI or an MCP server.
+The Cloudflare CLI is currently in beta. It requires Node.js 22.18 or newer. Install the official CLI with `npm install --global cf`, then run `cf auth login` and authenticate with access to the account you want to manage. Existing Wrangler authentication is separate. This package supplies agent instructions and a Python inference bridge, not the Cloudflare CLI or an MCP server.
 
 For remote inference, ask:
 
 ```text
-@cloudflare Share my Tiles inference server through a protected Cloudflare Tunnel so I can use it from another device.
+@cloudflare Share my Tiles inference server through an unauthenticated Quick Tunnel so I can use it from another device.
 ```
 
-This workflow also requires `cloudflared`, a Cloudflare-managed hostname, and Cloudflare Access. It publishes only the verified Responses API endpoint and tests streaming with an authenticated client. Quick Tunnels do not support SSE. The receiving client must support the Responses API and custom Access headers; native Tiles-to-Tiles sharing uses `tiles remote share` and an Iroh ticket instead. Installing this plugin does not start a tunnel.
+This workflow requires `cloudflared` and Python 3, with no Cloudflare account, login, domain, or API token. The connector uses Cloudflare's unauthenticated Quick Tunnel API. A bundled loopback bridge exposes only the Responses API and buffers Tiles' SSE into a completed JSON response, because Quick Tunnels do not support live SSE. Use a non-streaming Responses API client; anyone with the temporary URL can call that endpoint. Native Tiles-to-Tiles sharing still uses `tiles remote share` and an Iroh ticket. Named tunnels with Access remain available for streaming or persistent hosting. Installing this plugin does not start a tunnel.
 
 The ZIP follows [Agent Plugins 1.0.0](https://agent-plugins.org/): `plugin.json`, `LICENSE`, and both skill folders under `skills/` are at the archive root. To rebuild it from this repository:
 

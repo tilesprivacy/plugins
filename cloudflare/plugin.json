@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "cloudflare",
-  "version": "1.1.0",
-  "description": "Manage Cloudflare resources, Workers projects, and protected tunnels for Tiles inference.",
+  "version": "1.2.0",
+  "description": "Manage Cloudflare resources and Workers projects, and share Tiles inference with account-free Quick Tunnels.",
   "author": {
     "name": "Tiles Privacy",
     "url": "https://tiles.run"

@@ -1,13 +1,13 @@
 ---
 name: cloudflare
-description: Manage Cloudflare resources and Workers projects with the cf CLI, or share a Tiles inference server through a protected Cloudflare Tunnel. Use for Cloudflare resource, deployment, and Tiles remote inference sharing tasks.
+description: Manage Cloudflare resources and Workers projects with the cf CLI, or share Tiles inference through account-free Cloudflare Quick Tunnels. Use for Cloudflare resource, deployment, and Tiles remote inference sharing tasks.
 ---
 
 # Cloudflare
 
 Use Cloudflare's official `cf` CLI to manage resources and Workers projects. This package supplies agent instructions; it does not bundle the CLI or an MCP server.
 
-For sharing a Tiles local server with another device, read [Tiles remote inference](../tiles-remote-inference/SKILL.md) first. That workflow uses the separate `cloudflared` connector, a named tunnel, and Cloudflare Access; `cf` alone does not run a tunnel. It also explains which remote clients can use Tiles' Responses API.
+For sharing a Tiles local server with another device, read [Tiles remote inference](../tiles-remote-inference/SKILL.md) first. The default uses `cloudflared`'s unauthenticated Quick Tunnel provisioning and a bundled Python bridge for non-streaming Responses API clients. No Cloudflare login, account, domain, or API token is required. Named tunnels with Access remain an optional workflow for persistent or streaming use; `cf` alone does not run a tunnel.
 
 The `cf` workflows below require a terminal tool, Node.js 22.18 or newer, and `cf` on PATH. Dashboard setup plus `cloudflared` does not require Node.js or `cf`. The CLI is in beta: use current command discovery, installed help, and official documentation instead of assuming flags from Wrangler or older examples.
 

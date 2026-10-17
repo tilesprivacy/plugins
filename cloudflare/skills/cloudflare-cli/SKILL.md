@@ -1,13 +1,17 @@
 ---
-name: cloudflare
+name: cloudflare-cli
 description: Manage Cloudflare resources and Workers projects with the cf CLI, or share Tiles inference through account-free Cloudflare Quick Tunnels. Use for Cloudflare resource, deployment, and Tiles remote inference sharing tasks.
 ---
 
-# Cloudflare
+# Cloudflare CLI
 
 Use Cloudflare's official `cf` CLI to manage resources and Workers projects. This package supplies agent instructions; it does not bundle the CLI or an MCP server.
 
-For sharing a Tiles local server with another device, read [Tiles remote inference](../tiles-remote-inference/SKILL.md) first. The default uses `cloudflared`'s unauthenticated Quick Tunnel provisioning and a bundled Python bridge for non-streaming Responses API clients. No Cloudflare login, account, domain, or API token is required. Named tunnels with Access remain an optional workflow for persistent or streaming use; `cf` alone does not run a tunnel.
+Use the available host `read` and `bash` tools. This skill-only plugin does not register `cloudflare__` tools; their absence does not prevent running the installed CLIs.
+
+For sharing a Tiles local server with another device, read [Tiles remote inference](../tiles-remote-inference/SKILL.md) first, using its absolute location in the available-skills list. Relative links start from this SKILL.md's directory, not the terminal working directory. Tiles installs these files under `$PI_CODING_AGENT_DIR/plugins/cloudflare/skills/`; the remote-inference skill includes a runnable path check. Do not look for them in a standalone `~/.pi/skills` or shared `pi/agent/skills` folder. In Tiles, `@tiles-remote-inference` opens that skill directly.
+
+The default uses `cloudflared`'s unauthenticated Quick Tunnel provisioning and a bundled Python bridge for non-streaming Responses API clients. No Cloudflare login, account, domain, or API token is required. Named tunnels with Access remain an optional workflow for persistent or streaming use; `cf` alone does not run a tunnel.
 
 The `cf` workflows below require a terminal tool, Node.js 22.18 or newer, and `cf` on PATH. Dashboard setup plus `cloudflared` does not require Node.js or `cf`. The CLI is in beta: use current command discovery, installed help, and official documentation instead of assuming flags from Wrangler or older examples.
 

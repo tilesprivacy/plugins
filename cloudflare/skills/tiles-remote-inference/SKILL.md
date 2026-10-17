@@ -18,6 +18,50 @@ alone does not establish a tunnel. Do not print or save those credentials in
 the plugin. The raw endpoint is an implementation detail; the documented CLI
 is the supported way to create and run the connector.
 
+## Locate the installed helper first
+
+This skill uses the host's available `read` and `bash` tools. It does not
+register `cloudflare__` tools. Use the absolute `location` shown for this skill
+in the available-skills list or expanded skill message. Its `scripts/` and
+`references/` paths are relative to that SKILL.md, not the working directory.
+
+Tiles loads plugin skills directly from the installed plugin directory. It
+does not put this helper in a shared `pi/agent/skills` directory. Run this
+preflight on the machine running Tiles; it prints the actual paths and checks
+that Python can execute the helper without starting a server or tunnel:
+
+```sh
+TILES_TUNNEL_AGENT_DIR="${PI_CODING_AGENT_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/tiles/data/pi/agent}"
+TILES_TUNNEL_SKILL_DIR="$TILES_TUNNEL_AGENT_DIR/plugins/cloudflare/skills/tiles-remote-inference"
+TILES_TUNNEL_BRIDGE="$TILES_TUNNEL_SKILL_DIR/scripts/quick_tunnel_bridge.py"
+printf 'Skill: %s\nBridge: %s\n' "$TILES_TUNNEL_SKILL_DIR/SKILL.md" "$TILES_TUNNEL_BRIDGE"
+if [ ! -r "$TILES_TUNNEL_BRIDGE" ]; then
+  printf 'Helper not readable at this path; check the registered skill location.\n' >&2
+  exit 1
+fi
+python3 "$TILES_TUNNEL_BRIDGE" --help
+```
+
+`PI_CODING_AGENT_DIR` is set by Tiles for its agent and already accounts for
+custom data locations. The fallback covers a default macOS/Linux installation,
+including `XDG_DATA_HOME`. If the environment variable is unavailable and a
+custom data location is configured, use the registered skill location instead
+of guessing another folder. Outside Tiles, the local daemon can supply only
+that data path without displaying the full configuration:
+
+```sh
+curl -fsS --max-time 5 http://127.0.0.1:1729/config | python3 -c 'import json,sys; print(json.load(sys.stdin).get("data", {}).get("path", ""))'
+```
+
+A nonempty data path contains `pi/agent/plugins/cloudflare/skills/` beneath it;
+an empty path means the default above. Never tunnel this configuration endpoint.
+If both the registered skill location and the actual installed plugin lack the
+helper, check `tiles plugin list`, then repair this plugin with
+`tiles plugin install https://download.tiles.run/plugins/cloudflare.zip` and
+start a fresh chat so the updated skill is loaded. Do not reinstall repeatedly
+or search the entire filesystem. Report an actual tool denial or missing host
+access precisely; a wrong path is not evidence that execution is forbidden.
+
 ## Choose the receiving client
 
 - Quick Tunnels **do not support Server Sent Events (SSE)**. Use the bundled
@@ -86,18 +130,50 @@ converts a completed stream into the expected JSON.
 
 ## Start the local bridge
 
-Resolve the script relative to this skill's actual installed location:
+After the preflight and local model checks succeed, launch the bridge with this
+self-contained block. Pi's `bash` tool is a one-shot command runner, so start a
+separate session with closed input and a private log instead of leaving a
+foreground command waiting. Each tool call may start a fresh shell; this block
+resolves the installed helper again:
 
 ```sh
-python3 /absolute/path/to/skills/tiles-remote-inference/scripts/quick_tunnel_bridge.py --port 6970
+python3 - <<'PY'
+import json, os, pathlib, subprocess, sys, tempfile, time
+os.umask(0o077)
+agent_dir = pathlib.Path(os.environ.get("PI_CODING_AGENT_DIR") or
+    pathlib.Path(os.environ.get("XDG_DATA_HOME", pathlib.Path.home() / ".local/share")) / "tiles/data/pi/agent")
+helper = agent_dir / "plugins/cloudflare/skills/tiles-remote-inference/scripts/quick_tunnel_bridge.py"
+if not helper.is_file() or not os.access(helper, os.R_OK):
+    raise SystemExit(f"Helper is not readable: {helper}; resolve the registered skill location first")
+run_dir = pathlib.Path(tempfile.mkdtemp(prefix="tiles-bridge-"))
+log_path, pid_file = run_dir / "bridge.log", run_dir / "pid"
+command = [sys.executable, str(helper), "--port", "6970"]
+with log_path.open("xb") as log:
+    process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=log,
+        stderr=subprocess.STDOUT, start_new_session=True)
+pid_file.write_text(f"{process.pid}\n")
+time.sleep(0.3)
+if process.poll() is not None:
+    raise SystemExit(f"Bridge PID {process.pid} exited with status {process.returncode}; inspect {log_path}")
+(run_dir / "process.txt").write_text(subprocess.check_output(
+    ["ps", "-p", str(process.pid), "-o", "pid=,lstart=,args="], text=True))
+print(json.dumps({"pid": process.pid, "log": str(log_path), "pid_file": str(pid_file),
+    "command": command, "run_dir": str(run_dir), "readiness_verified": False}))
+PY
 ```
 
-Keep it running in a managed foreground session and record its PID. It listens
-only on `127.0.0.1`, accepts only `POST /v1/responses`, forwards normal Responses
-fields without executing tools, and buffers at most 8 MiB. Requests are limited
-to 1 MiB, one active inference request, and a 90-second inference deadline.
-If port `6970` is occupied, select an unused local port with `--port` and use
-that same port throughout. Do not stop an unrelated process.
+If preflight resolved a custom data location without `PI_CODING_AGENT_DIR`, set
+that variable to the verified `pi/agent` directory in this same invocation.
+Record the returned paths and PID. The short startup check only catches an
+early exit; it does not establish listener or model readiness. Read the private
+log on failure and correct the error before continuing.
+
+The bridge listens only on `127.0.0.1`, accepts only `POST /v1/responses`, forwards
+normal Responses fields without executing tools, and buffers at most 8 MiB.
+Requests are limited to 1 MiB, one active inference request, and a 90-second
+inference deadline. If port `6970` is occupied, choose an unused local port and
+change it consistently in the launch block, local test, and connector URL.
+Do not stop an unrelated process.
 
 Create a private `request.json` with the verified model ID:
 
@@ -124,15 +200,46 @@ only for its private request to Tiles.
 
 ## Create the unauthenticated Quick Tunnel
 
+Only continue after the local bridge inference test above returned a completed
+JSON response. This block also checks that its listener still exists, then
+launches the connector independently of the one-shot shell:
+
 ```sh
-cloudflared tunnel --url http://127.0.0.1:6970
+python3 - <<'PY'
+import json, os, pathlib, shutil, socket, subprocess, tempfile, time
+os.umask(0o077)
+connector = shutil.which("cloudflared")
+if not connector:
+    raise SystemExit("cloudflared is not installed or is not on PATH")
+with socket.create_connection(("127.0.0.1", 6970), timeout=2):
+    pass
+run_dir = pathlib.Path(tempfile.mkdtemp(prefix="tiles-quick-tunnel-"))
+log_path, pid_file = run_dir / "cloudflared.log", run_dir / "pid"
+command = [connector, "tunnel", "--url", "http://127.0.0.1:6970"]
+with log_path.open("xb") as log:
+    process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=log,
+        stderr=subprocess.STDOUT, start_new_session=True)
+pid_file.write_text(f"{process.pid}\n")
+time.sleep(0.3)
+if process.poll() is not None:
+    raise SystemExit(f"Connector PID {process.pid} exited with status {process.returncode}; inspect {log_path}")
+(run_dir / "process.txt").write_text(subprocess.check_output(
+    ["ps", "-p", str(process.pid), "-o", "pid=,lstart=,args="], text=True))
+print(json.dumps({"pid": process.pid, "log": str(log_path), "pid_file": str(pid_file),
+    "command": command, "run_dir": str(run_dir), "readiness_verified": False}))
+PY
 ```
 
-This uses the unauthenticated creation API described above and prints a random
-`https://...trycloudflare.com` hostname. Capture the actual returned URL; never
-invent one. Keep the connector running and record its PID. Do not install it
-as a persistent system service unless requested. Do not add `--allowed-mail`:
-that enables browser authentication and does not support this API client flow.
+This uses the unauthenticated creation API described above. Read the returned
+private log path to capture the actual `https://...trycloudflare.com` hostname;
+never invent one. The URL may take a few seconds to appear. Check the log again
+after a short interval if needed, and report a connector error if it exits.
+Do not wait for this long-running process to finish inside the tool call.
+A live PID or a printed URL is not proof that public inference works.
+
+Record the connector's run directory for cleanup. Do not install it as a
+persistent system service unless requested. Do not add `--allowed-mail`: that
+enables browser authentication and does not support this API client flow.
 
 If an existing `cloudflared` configuration prevents Quick Tunnel mode, inspect
 current installed help and use an isolated configuration approach that preserves
@@ -175,8 +282,13 @@ and local Tiles model first; for 429, wait for the active request to finish.
 
 ## Stop sharing
 
-Stop the specific `cloudflared` process started for this share, then the bridge.
-Confirm the old URL no longer serves inference. Quick Tunnels need no named
+Stop this connector first, then this bridge. For each recorded run directory,
+read `pid` and compare `ps -p PID -o pid=,lstart=,args=` with its saved
+`process.txt`. Confirm the PID, start time, and command all match before sending
+`SIGTERM` to that PID. If the process is gone or the record does not match, do
+not signal it. Never use broad `pkill` or `killall` commands that could stop
+other shares. Verify each matching process exits, then confirm the old URL no
+longer serves inference. Quick Tunnels need no named
 tunnel, DNS, or Access resource cleanup. Stop the Tiles inference server only
 if this workflow started it and no other work needs it. Leave unrelated services
 running. Keep the host awake for the intended session; closing the connector

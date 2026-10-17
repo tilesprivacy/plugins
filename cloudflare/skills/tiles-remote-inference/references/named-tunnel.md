@@ -61,13 +61,55 @@ cloudflared tunnel --config "$TILES_TUNNEL_CONFIG" ingress validate
 cloudflared tunnel --config "$TILES_TUNNEL_CONFIG" ingress rule https://inference.example.com/v1/responses
 cloudflared tunnel --config "$TILES_TUNNEL_CONFIG" ingress rule https://inference.example.com/v1/tilekit/session/list
 cloudflared tunnel route dns TUNNEL_UUID inference.example.com
-cloudflared tunnel --config "$TILES_TUNNEL_CONFIG" run TUNNEL_UUID
 ```
 
 The first test must match the inference rule; the second must match the final
-404. Keep the process foreground or record its specific PID for the requested
-session. Do not install an automatic system service unless persistent hosting
-was requested. Never disable origin TLS verification or JWT checks to fix an error.
+404. After those checks and the local model test succeed, launch the connector
+separately from Pi's one-shot `bash` call. Set and export `TILES_TUNNEL_CONFIG`
+and `TILES_TUNNEL_UUID` to the verified private config path and returned tunnel
+UUID in this same invocation; shell variables do not persist across tool calls.
+Do not use example values or guess a credentials file:
+
+```sh
+python3 - <<'PY'
+import json, os, pathlib, shutil, subprocess, tempfile, time, uuid
+os.umask(0o077)
+config_value = os.environ.get("TILES_TUNNEL_CONFIG")
+tunnel_value = os.environ.get("TILES_TUNNEL_UUID")
+if not config_value or not tunnel_value:
+    raise SystemExit("Set TILES_TUNNEL_CONFIG and TILES_TUNNEL_UUID to the verified values")
+config = pathlib.Path(config_value).expanduser()
+tunnel_id = str(uuid.UUID(tunnel_value))
+if not config.is_absolute() or not config.is_file() or not os.access(config, os.R_OK):
+    raise SystemExit("The selected tunnel config must be an absolute readable file")
+if config.stat().st_mode & 0o077:
+    raise SystemExit("Make the selected private config owner-only before starting")
+connector = shutil.which("cloudflared")
+if not connector:
+    raise SystemExit("cloudflared is not installed or is not on PATH")
+run_dir = pathlib.Path(tempfile.mkdtemp(prefix="tiles-named-tunnel-"))
+log_path, pid_file = run_dir / "cloudflared.log", run_dir / "pid"
+command = [connector, "tunnel", "--config", str(config), "run", tunnel_id]
+with log_path.open("xb") as log:
+    process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=log,
+        stderr=subprocess.STDOUT, start_new_session=True)
+pid_file.write_text(f"{process.pid}\n")
+time.sleep(0.3)
+if process.poll() is not None:
+    raise SystemExit(f"Connector PID {process.pid} exited with status {process.returncode}; inspect {log_path}")
+(run_dir / "process.txt").write_text(subprocess.check_output(
+    ["ps", "-p", str(process.pid), "-o", "pid=,lstart=,args="], text=True))
+print(json.dumps({"pid": process.pid, "log": str(log_path), "pid_file": str(pid_file),
+    "command": command, "run_dir": str(run_dir), "readiness_verified": False}))
+PY
+```
+
+Keep the returned run directory for its PID and private log. A surviving process
+is not proof of a ready connector or working inference; inspect the log and run
+the Access and inference tests below. Do not wait for the connector to finish in
+the tool call. Do not install an automatic system service unless persistent
+hosting was requested. Never disable origin TLS verification or JWT checks to
+fix an error.
 
 ## Connect from the other device
 
@@ -118,7 +160,11 @@ Keep the host awake and Tiles inference running for the requested session.
 
 ## Stop sharing
 
-Stop only this connector process and revoke/delete its dedicated service token.
+Read `pid` from this connector's recorded run directory, and compare
+`ps -p PID -o pid=,lstart=,args=` with its saved `process.txt`. Only send `SIGTERM`
+when the PID, start time, and command match; if it is gone or the record differs,
+do not signal another process. Verify exit, then revoke/delete its dedicated
+service token. Do not use broad `pkill` or `killall` commands.
 For a permanent teardown, remove the dedicated DNS route, then delete the named
 tunnel with `cloudflared tunnel delete TUNNEL_UUID`. Remove the Access application
 only after routing is gone. Preserve shared resources. Stop Tiles with
